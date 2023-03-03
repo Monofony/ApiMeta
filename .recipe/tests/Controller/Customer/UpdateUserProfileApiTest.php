@@ -4,23 +4,26 @@ declare(strict_types=1);
 
 namespace App\Tests\Controller\Customer;
 
+use App\Factory\AppUserFactory;
+use App\Story\TestAppUsersStory;
 use App\Tests\Controller\AuthorizedHeaderTrait;
 use App\Tests\Controller\JsonApiTestCase;
-use Sylius\Component\Customer\Model\CustomerInterface;
+use App\Tests\Controller\PurgeDatabaseTrait;
 use Symfony\Component\HttpFoundation\Response;
+use Zenstruck\Foundry\Test\Factories;
 
 final class UpdateUserProfileApiTest extends JsonApiTestCase
 {
     use AuthorizedHeaderTrait;
+    use Factories;
+    use PurgeDatabaseTrait;
 
-    /**
-     * @test
-     */
-    public function it_does_not_allow_to_update_user_profile_for_non_authenticated_user()
+    /** @test */
+    public function it_does_not_allow_to_update_user_profile_for_non_authenticated_user(): void
     {
-        $resources = $this->loadFixturesFromFile('resources/fixtures.yaml');
-        /** @var CustomerInterface $customer */
-        $customer = $resources['customer'];
+        TestAppUsersStory::load();
+
+        $customer = AppUserFactory::find(['username' => 'sylius'])->getCustomer();
 
         $this->client->request('PUT', '/api/customers/'.$customer->getId());
 
@@ -28,14 +31,12 @@ final class UpdateUserProfileApiTest extends JsonApiTestCase
         $this->assertResponse($response, 'error/access_denied_response', Response::HTTP_UNAUTHORIZED);
     }
 
-    /**
-     * @test
-     */
-    public function it_does_not_allows_to_update_another_profile()
+    /** @test */
+    public function it_does_not_allows_to_update_another_profile(): void
     {
-        $resources = $this->loadFixturesFromFile('resources/fixtures.yaml');
-        /** @var CustomerInterface $customer */
-        $customer = $resources['another_customer'];
+        TestAppUsersStory::load();
+
+        $customer = AppUserFactory::find(['username' => 'monofony'])->getCustomer();
 
         $data =
             <<<EOT
@@ -47,20 +48,18 @@ final class UpdateUserProfileApiTest extends JsonApiTestCase
         }
 EOT;
 
-        $this->client->request('PUT', '/api/customers/'.$customer->getId(), [], [], static::$authorizedHeaderWithContentType, $data);
+        $this->client->request('PUT', '/api/customers/'.$customer->getId(), [], [], self::$authorizedHeaderWithContentType, $data);
 
         $response = $this->client->getResponse();
         $this->assertResponseCode($response, Response::HTTP_FORBIDDEN);
     }
 
-    /**
-     * @test
-     */
-    public function it_allows_to_update_user_profile()
+    /** @test */
+    public function it_allows_to_update_user_profile(): void
     {
-        $resources = $this->loadFixturesFromFile('resources/fixtures.yaml');
-        /** @var CustomerInterface $customer */
-        $customer = $resources['customer'];
+        TestAppUsersStory::load();
+
+        $customer = AppUserFactory::find(['username' => 'sylius'])->getCustomer();
 
         $data =
             <<<EOT
@@ -72,7 +71,7 @@ EOT;
         }
 EOT;
 
-        $this->client->request('PUT', '/api/customers/'.$customer->getId(), [], [], static::$authorizedHeaderWithContentType, $data);
+        $this->client->request('PUT', '/api/customers/'.$customer->getId(), [], [], self::$authorizedHeaderWithContentType, $data);
 
         $response = $this->client->getResponse();
         $this->assertResponse($response, 'customer/update_user_profile_response', Response::HTTP_OK);
@@ -85,15 +84,12 @@ EOT;
         $data =
             <<<EOT
         {
-            "client_id": "client_id",
-            "client_secret": "secret",
-            "grant_type": "password",
             "username": "$username",
             "password": "$password"
         }
 EOT;
 
-        $this->client->request('POST', '/api/oauth/v2/token', [], [], ['CONTENT_TYPE' => 'application/json'], $data);
+        $this->client->request('POST', '/api/authentication_token', [], [], ['CONTENT_TYPE' => 'application/json'], $data);
 
         $response = $this->client->getResponse();
         $this->assertResponse($response, 'authentication/new_access_token', Response::HTTP_OK);
