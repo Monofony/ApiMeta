@@ -1,7 +1,7 @@
 {
     "@context": "/api/contexts/Error",
     "@type": "hydra:Error",
+    "trace": @array@,
     "hydra:title": "An error occurred",
-    "hydra:description": "Token expired.",
-    "trace": @array@
+    "hydra:description": "Token expired."
 }
